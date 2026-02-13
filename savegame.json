@@ -1,0 +1,83 @@
+{
+  "score": 1060,
+  "level": 8,
+  "lives": 3,
+  "asteroids_cleared": 1,
+  "player": {
+    "x": 125,
+    "y": 440,
+    "shield_until": 82897
+  },
+  "asteroids": [
+    {
+      "x": 253,
+      "y": 486.0,
+      "speed": 6.0,
+      "radius": 12,
+      "is_small": true
+    },
+    {
+      "x": 184,
+      "y": 446.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 615,
+      "y": 432.0,
+      "speed": 6.0,
+      "radius": 12,
+      "is_small": true
+    },
+    {
+      "x": 62,
+      "y": 380.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 488,
+      "y": 368.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 288,
+      "y": 294.0,
+      "speed": 6.0,
+      "radius": 12,
+      "is_small": true
+    },
+    {
+      "x": 358,
+      "y": 266.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 199,
+      "y": 194.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 539,
+      "y": 104.0,
+      "speed": 6.0,
+      "radius": 28,
+      "is_small": false
+    },
+    {
+      "x": 513,
+      "y": 90.0,
+      "speed": 6.0,
+      "radius": 12,
+      "is_small": true
+    }
+  ]
+}
