@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Ruby Asteroids
+Comment=Arcade Space Shooter
+Exec=/home/levi/dist/install_and_run.sh
+Icon=/home/levi/dist/media/Spaceship.png
+Terminal=false
+Type=Application
+Categories=Game;
+StartupNotify=true
