@@ -1,5 +1,5 @@
 class Player
-  attr_reader :x, :y, :radius, :scale, :shield_scale
+  attr_reader :x, :y, :radius, :scale, :shield_scale, :armor, :max_armor
   attr_accessor :recovery_until, :shield_until, :weapon_type, :weapon_until, :base_speed
 
   def initialize(image)
@@ -14,6 +14,10 @@ class Player
     @weapon_type = :normal
     @weapon_until = 0
     @base_speed = 5
+    
+    # Armor system
+    @max_armor = 1
+    @armor = @max_armor
   end
 
   def recovering?
@@ -48,7 +52,24 @@ class Player
     @image = new_image
     @scale = new_scale
     @shield_scale = new_shield_scale
-    @y -= y_offset # Move ship up if it's taller
+    @y -= y_offset
     @base_speed += 1.5
+    
+    # Upgrade Armor
+    @max_armor = 2
+    @armor = @max_armor
+  end
+
+  def take_damage
+    if @armor > 0
+      @armor -= 1
+      return :damaged
+    else
+      return :destroyed
+    end
+  end
+
+  def repair
+    @armor = @max_armor
   end
 end

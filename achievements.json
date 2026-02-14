@@ -1,1 +1,17 @@
-{"stats":{"kills":240,"bosses":1,"total_score":10100},"unlocked":["first_kill","ten_kills","millionaire","boss_slayer"]}
+{
+  "stats": {
+    "kills": 416,
+    "bosses": 3,
+    "total_score": 44200,
+    "level": 8,
+    "combos": 2
+  },
+  "unlocked": [
+    "first_kill",
+    "ten_kills",
+    "millionaire",
+    "boss_slayer",
+    "fifty_kills",
+    "boss_hunter"
+  ]
+}

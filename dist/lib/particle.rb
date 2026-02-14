@@ -1,7 +1,7 @@
 class Particle
   attr_reader :dead
 
-  def initialize(image, x, y)
+  def initialize(image, x, y, color = Gosu::Color::WHITE)
     @image = image
     @x = x
     @y = y
@@ -11,6 +11,7 @@ class Particle
     @opacity = 255
     @dead = false
     @scale = rand(0.5..1.2)
+    @base_color = color
   end
 
   def update
@@ -21,7 +22,9 @@ class Particle
   end
 
   def draw
-    color = Gosu::Color.rgba(255, 255, 255, @opacity)
+    # Merge base color with our current opacity
+    color = @base_color.dup
+    color.alpha = @opacity
     @image.draw_rot(@x, @y, 2, @angle, 0.5, 0.5, @scale, @scale, color)
   end
 end

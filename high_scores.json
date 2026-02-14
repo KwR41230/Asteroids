@@ -1,5 +1,13 @@
 [
   {
+    "name": "DAD",
+    "score": 486960
+  },
+  {
+    "name": "DAD",
+    "score": 38920
+  },
+  {
     "name": "KWR",
     "score": 880
   },
@@ -30,13 +38,5 @@
   {
     "name": "DOG",
     "score": 200
-  },
-  {
-    "name": "KEV",
-    "score": 180
-  },
-  {
-    "name": "EGG",
-    "score": 100
   }
 ]
