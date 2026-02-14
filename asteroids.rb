@@ -9,6 +9,9 @@ require_relative 'lib/save_system'
 require_relative 'lib/powerup'
 require_relative 'lib/ufo'
 require_relative 'lib/starfield'
+require_relative 'lib/boss'
+require_relative 'lib/achievement_manager'
+require_relative 'lib/toast'
 
 class GameWindow < Gosu::Window
   WIDTH = 1024
@@ -25,6 +28,7 @@ class GameWindow < Gosu::Window
     @starfield = Starfield.new
 
     @ship_image = Gosu::Image.new("media/Spaceship.png")
+    @ship_upgrade1_image = Gosu::Image.new("media/ship-upgrade1.png")
     @bullet_image = Gosu::Image.new("media/Bullet.png")
     @asteroid_small_image = Gosu::Image.new("media/AsteroidSmall.png")
     @asteroid_medium_image = Gosu::Image.new("media/AsteroidMedium.png")
@@ -32,6 +36,7 @@ class GameWindow < Gosu::Window
     @explosion_anim = Gosu::Image.load_tiles("media/explosion.png", 64, 64)
     
     @ufo_image = Gosu::Image.new("media/ufo.png")
+    @boss_image = Gosu::Image.new("media/boss-1.png")
     @alien_bullet_image = Gosu::Image.new("media/alien_bullet.png")
     
     all_crystals = Gosu::Image.load_tiles("media/crystals.png", 32, 32)
@@ -50,17 +55,21 @@ class GameWindow < Gosu::Window
     @bg_music.play(true)
     
     @state = :menu 
-    @menu_options = ["START NEW GAME", "LOAD GAME", "HIGH SCORES", "EXIT"]
+    @menu_options = ["START NEW GAME", "LOAD GAME", "HIGH SCORES", "LIFETIME STATS", "EXIT"]
     @menu_index = 0
     @pause_options = ["RESUME", "SAVE & EXIT", "QUIT TO MENU"]
     @pause_index = 0
 
-    @font_large = Gosu::Font.new(80) # Increased font size for higher res
-    @font_small = Gosu::Font.new(35) # Increased
-    @font = Gosu::Font.new(25)       # Increased
+    @font_large = Gosu::Font.new(80) 
+    @font_small = Gosu::Font.new(35) 
+    @font = Gosu::Font.new(25)       
     
     @player = Player.new(@ship_image)
     @asteroids, @bullets, @particles, @explosions, @powerups, @ufos, @alien_bullets = [], [], [], [], [], [], []
+    @boss = nil
+    @toasts = []
+    @achievement_manager = AchievementManager.new
+    
     @score, @lives, @level = 0, 3, 1
     @combo_count, @combo_timer, @shield_cooldown_until = 0, 0, 0
     @shake_amount = 0
@@ -73,6 +82,7 @@ class GameWindow < Gosu::Window
     @bg_music.volume = 0.5
     @player = Player.new(@ship_image)
     @asteroids, @bullets, @particles, @explosions, @powerups, @ufos, @alien_bullets = [], [], [], [], [], [], []
+    @boss = nil
     @score, @lives, @level, @asteroids_cleared = 0, 3, 1, 0
     @combo_count, @combo_timer, @shield_cooldown_until, @level_up_timer = 0, 0, 0, 0
     @shake_amount = 0
@@ -101,6 +111,10 @@ class GameWindow < Gosu::Window
     @player.weapon_type = (data["player"]["weapon_type"] || "normal").to_sym
     @player.weapon_until = data["player"]["weapon_until"] || 0
     @player.base_speed = data["player"]["base_speed"] || 5
+    
+    # Apply upgrade image if level > 5
+    @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20) if @level > 5
+    
     @asteroids = data["asteroids"].map do |a|
       img = a["is_small"] ? @asteroid_small_image : @asteroid_medium_image
       Asteroid.new(img, a["speed"], a["radius"], a["x"], a["y"], a["vel_x"] || 0)
@@ -134,7 +148,7 @@ class GameWindow < Gosu::Window
     case @state
     when :menu then handle_menu_input(id)
     when :paused then handle_pause_input(id)
-    when :high_scores then @state = :menu if [Gosu::KB_ESCAPE, Gosu::KB_RETURN, Gosu::KB_SPACE].include?(id)
+    when :high_scores, :stats then @state = :menu if [Gosu::KB_ESCAPE, Gosu::KB_RETURN, Gosu::KB_SPACE].include?(id)
     when :name_entry then handle_name_entry_input(id)
     when :game_over
       if id == Gosu::KB_SPACE || id == Gosu::KB_RETURN
@@ -168,6 +182,7 @@ class GameWindow < Gosu::Window
     when "START NEW GAME" then start_game
     when "LOAD GAME" then load_game if SaveSystem.save_exists?
     when "HIGH SCORES" then @state = :high_scores
+    when "LIFETIME STATS" then @state = :stats
     when "EXIT" then close
     end
   end
@@ -208,11 +223,15 @@ class GameWindow < Gosu::Window
       case @state
       when :menu then draw_menu
       when :high_scores then draw_high_scores
+      when :stats then draw_stats
       when :name_entry then draw_name_entry
       when :playing, :level_up, :paused then draw_gameplay; draw_pause_overlay if @state == :paused
       when :game_over then draw_game_over
       end
     end
+    
+    # Render Toasts on TOP of translation (fixed to screen)
+    @toasts.each(&:draw)
   end
 
   def draw_menu
@@ -244,6 +263,29 @@ class GameWindow < Gosu::Window
     @font.draw_text("Press ESC for Menu", WIDTH/2 - (@font.text_width("Press ESC for Menu")/2), HEIGHT - 60, 2, 1, 1, Gosu::Color::GRAY)
   end
 
+  def draw_stats
+    @font_large.draw_text("LIFETIME STATS", WIDTH/2 - (@font_large.text_width("LIFETIME STATS")/2), 50, 2, 1, 1, Gosu::Color::YELLOW)
+    
+    stats = @achievement_manager.stats
+    y_start = 180
+    
+    @font_small.draw_text("Total Kills:", WIDTH/2 - 250, y_start, 2)
+    @font_small.draw_text(stats[:kills].to_s, WIDTH/2 + 150, y_start, 2, 1, 1, Gosu::Color::CYAN)
+    
+    @font_small.draw_text("Bosses Defeated:", WIDTH/2 - 250, y_start + 60, 2)
+    @font_small.draw_text(stats[:bosses].to_s, WIDTH/2 + 150, y_start + 60, 2, 1, 1, Gosu::Color::CYAN)
+    
+    @font_small.draw_text("Peak Score:", WIDTH/2 - 250, y_start + 120, 2)
+    @font_small.draw_text(stats[:total_score].to_s, WIDTH/2 + 150, y_start + 120, 2, 1, 1, Gosu::Color::CYAN)
+
+    total_ach = AchievementManager::ACHIEVEMENTS.size
+    unlocked_ach = @achievement_manager.unlocked.size
+    @font_small.draw_text("Achievements:", WIDTH/2 - 250, y_start + 240, 2)
+    @font_small.draw_text("#{unlocked_ach} / #{total_ach}", WIDTH/2 + 150, y_start + 240, 2, 1, 1, Gosu::Color::GREEN)
+
+    @font.draw_text("Press ESC for Menu", WIDTH/2 - (@font.text_width("Press ESC for Menu")/2), HEIGHT - 60, 2, 1, 1, Gosu::Color::GRAY)
+  end
+
   def draw_name_entry
     @font_large.draw_text("NEW HIGH SCORE!", WIDTH/2 - (@font_large.text_width("NEW HIGH SCORE!")*0.8/2), 100, 2, 0.8, 0.8, Gosu::Color::YELLOW)
     3.times do |i|
@@ -255,6 +297,7 @@ class GameWindow < Gosu::Window
 
   def draw_gameplay
     @player.draw; @asteroids.each(&:draw); @bullets.each(&:draw); @particles.each(&:draw); @explosions.each(&:draw); @powerups.each(&:draw); @ufos.each(&:draw); @alien_bullets.each(&:draw)
+    @boss.draw if @boss
     
     # Progress bar
     bar_w = (@asteroids_cleared.to_f / level_goal) * 150
@@ -263,7 +306,9 @@ class GameWindow < Gosu::Window
 
     if @player.shielded?
       pulse = Math.sin(Gosu.milliseconds/200.0)*0.05
-      @shield_image.draw_rot(@player.x, @player.y, 2, 0, 0.5, 0.5, 0.4 + pulse, 0.4 + pulse, Gosu::Color.rgba(0, 150, 255, 200))
+      # Use the specific shield scale assigned to the current ship
+      s_scale = @player.shield_scale + pulse
+      @shield_image.draw_rot(@player.x, @player.y, 2, 0, 0.5, 0.5, s_scale, s_scale, Gosu::Color.rgba(0, 150, 255, 200))
       bar_w = ([0, @player.shield_until - Gosu.milliseconds].max / 10000.0) * 150
       Gosu.draw_rect(WIDTH-170, 20, 154, 18, Gosu::Color::WHITE, 2); Gosu.draw_rect(WIDTH-168, 22, bar_w, 14, Gosu::Color::CYAN, 2)
     elsif Gosu.milliseconds < @shield_cooldown_until
@@ -298,6 +343,8 @@ class GameWindow < Gosu::Window
 
   def handle_asteroid_destruction(asteroid)
     create_explosion(asteroid.x, asteroid.y, 8)
+    @achievement_manager.notify(:kill) # Track the kill
+    
     if asteroid.radius > 20
       @asteroids << Asteroid.new(@asteroid_small_image, asteroid.speed * 1.2, 12, asteroid.x, asteroid.y, -2)
       @asteroids << Asteroid.new(@asteroid_small_image, asteroid.speed * 1.2, 12, asteroid.x, asteroid.y, 2)
@@ -307,14 +354,29 @@ class GameWindow < Gosu::Window
       @powerups << Powerup.new(asteroid.x, asteroid.y, is_spread ? :spread : :rapid, is_spread ? @spread_anim : @rapid_anim)
     end
     @score += (10 * @level); @asteroids_cleared += 1
+    @achievement_manager.notify(:score_update, @score)
+    
     if Gosu.milliseconds > @shield_cooldown_until && !@player.shielded?
       @combo_count += 1; @combo_timer = Gosu.milliseconds + 1500
       if @combo_count >= 5 then @player.shield_until = Gosu.milliseconds + 10000; @shield_cooldown_until = @player.shield_until + 30000; @combo_count = 0; @powerup_sound.play(0.6) end
     end
-    (@state = :level_up; @level_up_timer = Gosu.milliseconds + 2500; @level_up_sound.play(0.5)) if @asteroids_cleared >= level_goal
+    
+    # Only trigger level up if NO boss active. Boss death triggers its own level up.
+    if !@boss && @asteroids_cleared >= level_goal
+      @state = :level_up; @level_up_timer = Gosu.milliseconds + 2500; @level_up_sound.play(0.5)
+    end
   end
 
   def update
+    # Update Toasts (always update even if paused)
+    @toasts.each(&:update).reject!(&:dead?)
+    
+    # Check for newly unlocked achievements
+    while data = @achievement_manager.newly_unlocked.shift
+      @toasts << Toast.new(@font, data[:name], data[:desc])
+      @powerup_sound.play(0.5) # Reuse powerup sound for notification
+    end
+
     return if @state == :paused
     @starfield.update
     @particles.each(&:update).reject!(&:dead); @explosions.each(&:update).reject!(&:dead); @powerups.each(&:update).reject!(&:dead); @alien_bullets.each(&:update).reject! { |b| b.y > HEIGHT || b.y < 0 || b.x < 0 || b.x > WIDTH }
@@ -329,6 +391,11 @@ class GameWindow < Gosu::Window
       if Gosu.milliseconds > @level_up_timer
         @level += 1; @asteroids_cleared = 0; @asteroids, @bullets, @ufos, @alien_bullets = [], [], [], []
         @shield_cooldown_until = 0; @lives += 1 if @level % 3 == 0; @player.base_speed += 0.25; @state = :playing
+        # Spawn Boss if level multiple of 5
+        if @level % 5 == 0
+          @boss = Boss.new(@boss_image, @alien_bullet_image, @level)
+          @shake_amount = 25 # Initial warp-in shake
+        end
       end
       return
     end
@@ -337,6 +404,26 @@ class GameWindow < Gosu::Window
     @bullets.each(&:update).reject! { |b| b.x < 0 || b.x > WIDTH || b.y < 0 || b.y > HEIGHT }
     @asteroids.each(&:update).reject! { |a| a.y > HEIGHT + a.radius }
     
+    # Boss Logic
+    if @boss
+      shake_boost = @boss.update(@player.x, @player.y, @alien_bullets)
+      @shake_amount = [@shake_amount, shake_boost].max
+      if @boss.dead?
+        create_explosion(@boss.x, @boss.y, 50)
+        @achievement_manager.notify(:boss_defeat)
+        @score += 5000 * @level
+        
+        # Ship Upgrade
+        if @level == 5
+          @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20)
+          @toasts << Toast.new(@font, "SHIP UPGRADED!", "Improved Speed & Armor")
+        end
+        
+        @boss = nil
+        @state = :level_up; @level_up_timer = Gosu.milliseconds + 4000; @level_up_sound.play(0.8) # Long pause for victory
+      end
+    end
+
     @powerups.reject! do |p|
       if Gosu.distance(@player.x, @player.y, p.x, p.y) < (@player.radius + p.radius)
         @player.weapon_type = p.type; @player.weapon_until = Gosu.milliseconds + 10000; @powerup_sound.play(0.8); true
@@ -346,7 +433,16 @@ class GameWindow < Gosu::Window
     @bullets.reject! do |bullet|
       hit_ast = @asteroids.find { |a| Gosu.distance(bullet.x, bullet.y, a.x, a.y) < (bullet.radius + a.radius) }
       hit_ufo = @ufos.find { |u| Gosu.distance(bullet.x, bullet.y, u.x, u.y) < (bullet.radius + u.radius) }
-      if hit_ast
+      hit_boss = @boss && Gosu.distance(bullet.x, bullet.y, @boss.x, @boss.y) < (@boss.radius + bullet.radius)
+      
+      if hit_boss
+        if @boss.take_damage(1) == :drop_powerup
+          is_spread = rand < 0.5
+          @powerups << Powerup.new(@boss.x, @boss.y, is_spread ? :spread : :rapid, is_spread ? @spread_anim : @rapid_anim)
+        end
+        create_explosion(bullet.x, bullet.y, 1) # Tiny hit spark
+        true
+      elsif hit_ast
         handle_asteroid_destruction(hit_ast); @asteroids.delete(hit_ast); @fire_sound.play(0.3); true
       elsif hit_ufo
         create_explosion(hit_ufo.x, hit_ufo.y, 15); @ufos.delete(hit_ufo); @score += (50 * @level); @explosion_sound.play; true
@@ -357,11 +453,15 @@ class GameWindow < Gosu::Window
       hit_ast = @asteroids.find { |a| Gosu.distance(@player.x, @player.y, a.x, a.y) < (@player.radius + a.radius) }
       hit_ufo = @ufos.find { |u| Gosu.distance(@player.x, @player.y, u.x, u.y) < (@player.radius + u.radius) }
       hit_bul = @alien_bullets.find { |b| Gosu.distance(@player.x, @player.y, b.x, b.y) < (@player.radius + b.radius) }
-      if hit_ast || hit_ufo || hit_bul
+      hit_boss = @boss && Gosu.distance(@player.x, @player.y, @boss.x, @boss.y) < (@player.radius + @boss.radius)
+      
+      if hit_ast || hit_ufo || hit_bul || hit_boss
         if @player.shielded?
           if hit_ast then handle_asteroid_destruction(hit_ast); @asteroids.delete(hit_ast)
           elsif hit_ufo then create_explosion(hit_ufo.x, hit_ufo.y, 15); @ufos.delete(hit_ufo)
-          elsif hit_bul then @alien_bullets.delete(hit_bul) end
+          elsif hit_bul then @alien_bullets.delete(hit_bul) 
+          # Boss doesn't die from shield hit, just damages player logic handled elsewhere usually, or ignores it.
+          end
           @explosion_sound.play(0.5)
         else
           create_explosion(@player.x, @player.y, 20); @asteroids.delete(hit_ast) if hit_ast; @ufos.delete(hit_ufo) if hit_ufo; @alien_bullets.delete(hit_bul) if hit_bul
@@ -371,9 +471,12 @@ class GameWindow < Gosu::Window
       end
     end
     
-    if rand(100) < (1 + (@level * 1.5)) then img = rand < 0.5 ? @asteroid_small_image : @asteroid_medium_image; @asteroids << Asteroid.new(img, 2 + (@level * 0.5), (img == @asteroid_small_image ? 12 : 28)) end
-    ufo_limit = [1, (@level / 2).to_i].max; ufo_limit = 3 if ufo_limit > 3
-    if rand(1000) < (2 + (@level * 2)) && @ufos.size < ufo_limit then @ufos << UFO.new(@ufo_image, @alien_bullet_image, rand(0..1)) end
+    # Only spawn asteroids/UFOs if NO BOSS
+    unless @boss
+      if rand(100) < (1 + (@level * 1.5)) then img = rand < 0.5 ? @asteroid_small_image : @asteroid_medium_image; @asteroids << Asteroid.new(img, 2 + (@level * 0.5), (img == @asteroid_small_image ? 12 : 28)) end
+      ufo_limit = [1, (@level / 2).to_i].max; ufo_limit = 3 if ufo_limit > 3
+      if rand(1000) < (2 + (@level * 2)) && @ufos.size < ufo_limit then @ufos << UFO.new(@ufo_image, @alien_bullet_image, rand(0..1)) end
+    end
   end
 end
 
