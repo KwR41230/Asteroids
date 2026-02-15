@@ -1,4 +1,8 @@
 require 'gosu'
+
+# Change working directory to the script's location (fixes path issues for OCRA/EXE)
+Dir.chdir(File.dirname(__FILE__))
+
 require_relative 'lib/player'
 require_relative 'lib/asteroid'
 require_relative 'lib/bullet'

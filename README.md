@@ -37,14 +37,26 @@ To launch the game from your Applications menu with a custom icon:
 3. *Note: You may need to right-click the desktop file and select "Allow Launching" depending on your system.*
 
 ### Windows
-If you have received the `dist` folder:
+If you have a corporate laptop or cannot run `.exe` installers, use one of these methods:
 
-#### 1. One-Time Setup
-1. **Install Ruby:** Download and install **RubyInstaller (with Devkit)** from [rubyinstaller.org](https://rubyinstaller.org/). (Standard settings are fine).
-2. **Install Game Libraries:** Double-click `install_on_windows.bat` in the `dist` folder. This will automatically set up the required game engine.
+#### Method A: Using Winget (Easiest)
+1. Open **PowerShell** and search for the correct version:
+   ```powershell
+   winget search RubyInstaller
+   ```
+2. Look for the "Id" column. It is likely **`RubyInstallerTeam.RubyWithDevKit.3.3`** or **`RubyInstallerTeam.Ruby.3.3`**. 
+3. Install it using:
+   ```powershell
+   winget install [The.Id.You.Found]
+   ```
+   *(Note: If no package is found, your company may have blocked the winget repository. Use Method B instead.)*
+3. Once installed, double-click `install_on_windows.bat` and launch with `run_on_windows.bat`.
 
-#### 2. Launch the Game
-- Double-click `run_on_windows.bat` in the `dist` folder.
+#### Method B: Portable Mode (Works when everything else is blocked)
+This method doesn't "install" anything on your system; it just runs Ruby from the game folder.
+1. Right-click `setup_portable.ps1` in the `dist` folder and select **Run with PowerShell**.
+2. Wait for it to finish downloading.
+3. Launch with `play_portable.bat`.
 
 ---
 
