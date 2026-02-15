@@ -3,52 +3,58 @@
 A fast-paced, "juice"-heavy hybrid of classic **Asteroids** and **Space Invaders**. Battle through endless waves of asteroids, dodge deadly UFO lasers, and collect power-up crystals to survive.
 
 ## Features
-- **Dynamic Hybrid Gameplay:** Left/Right movement and vertical shooting mixed with splitting asteroids and multi-directional UFO threats.
+- **Dynamic Hybrid Gameplay:** Left/Right movement mixed with splitting asteroids and Boss battles.
+- **Boss Fights:** Encounter the "Void Reaver" every 5 levels with unique attack patterns and themes.
 - **Power-up System:** 
-  - **Shields:** Earned via a 5-hit combo. Grants 10 seconds of invincibility with a 30-second cooldown.
-  - **Weapon Crystals:** Collected from destroyed asteroids.
-    - **Red (Spread):** Fires a massive 6-bullet shotgun blast.
-    - **Green (Rapid):** High-speed automatic fire.
-- **UFO Enemies:** Dangerous saucers that hunt you with aimed laser fire.
-- **Arcade Polish:** Animated explosions, particle effects, screen shake on damage, and a 3-layer parallax starfield.
-- **Persistence:** Local High Score leaderboard (JSON) and a Save/Load system to resume your progress.
+  - **Shields:** Earned via combos.
+  - **Crystals:** Repair your armor (Cyan), fire Rapidly (Green), or use the 6-bullet Spread (Red).
+- **Ship Upgrades:** Defeat bosses to earn permanent speed, armor, and weapon evolutions.
+- **Arcade Polish:** Chromatic aberration title, dynamic smoke/fire damage effects, and parallax starfields.
+- **Persistence:** Local High Score leaderboard and Save/Load system.
 
-## Requirements
-To run this game, you need:
-- **Ruby** (3.0 or higher recommended)
-- **Gosu Gem:** The game engine.
-- **SDL2 Libraries:** Required by Gosu for graphics and sound.
+---
 
-### Installation (Linux - Arch/Omarchy)
+## Installation & Running (For Players)
+
+If you have received the `dist` folder, follow these steps to get playing on Linux (Pop!_OS, Ubuntu, Debian):
+
+### 1. One-Time Setup
+Open your terminal inside the `dist` folder and run the installer script. This will automatically install Ruby and the necessary game libraries:
 ```bash
-# Install system dependencies
-sudo pacman -S sdl2 sdl2_ttf sdl2_image sdl2_mixer
-
-# Install the Gosu gem
-gem install gosu
+chmod +x install_and_run.sh
+./install_and_run.sh
 ```
 
-## How to Run
-Navigate to the project directory and run:
+### 2. Add to App Menu (Optional)
+To launch the game from your Applications menu with a custom icon:
+1. Open the terminal in your `dist` folder.
+2. Run:
+   ```bash
+   mkdir -p ~/.local/share/applications/
+   cp ruby-asteroids.desktop ~/.local/share/applications/
+   ```
+3. *Note: You may need to right-click the desktop file and select "Allow Launching" depending on your system.*
+
+---
+
+## Development (For Creators)
+
+### Requirements
+- **Ruby 3.0+**
+- **Gosu Gem:** `gem install gosu`
+- **SDL2 Libraries:** `sudo apt install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev`
+
+### How to Run Source
 ```bash
 ruby asteroids.rb
 ```
 
-## Controls
+### Controls & Cheats
 - **Arrows:** Move Left/Right
 - **Space:** Fire Weapon / Select in Menu
 - **P / Esc:** Pause Game
-- **Enter:** Confirm (Menu/Name Entry)
-
-## Creating a Standalone Executable (Windows/Linux)
-You can bundle the game into a single file so others don't need Ruby installed.
-
-### Using Ocra (Windows)
-1. Install Ocra: `gem install ocra`
-2. Run: `ocra asteroids.rb lib/*.rb media/* --output Asteroids.exe`
-
-### Using AppImage (Linux)
-It is recommended to use `ruby-appimage` or similar tools to bundle the Ruby environment and the Gosu shared libraries.
+- **L (Cheat):** Skip to next Level
+- **G (Cheat):** Toggle God Mode (Invincibility)
 
 ---
 *Developed as a playground project in Ruby.*
