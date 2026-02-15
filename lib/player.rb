@@ -1,6 +1,6 @@
 class Player
-  attr_reader :x, :y, :radius, :scale, :shield_scale, :armor, :max_armor
-  attr_accessor :recovery_until, :shield_until, :weapon_type, :weapon_until, :base_speed
+  attr_reader :x, :radius, :scale, :shield_scale, :armor, :max_armor, :moving
+  attr_accessor :y, :recovery_until, :shield_until, :weapon_type, :weapon_until, :base_speed
 
   def initialize(image)
     @image = image
@@ -18,6 +18,7 @@ class Player
     # Armor system
     @max_armor = 1
     @armor = @max_armor
+    @moving = false
   end
 
   def recovering?
@@ -41,11 +42,13 @@ class Player
   def move_left
     @x -= @base_speed
     @x %= GameWindow::WIDTH
+    @moving = true
   end
 
   def move_right
     @x += @base_speed
     @x %= GameWindow::WIDTH
+    @moving = true
   end
 
   def upgrade_image(new_image, new_scale = 1.0, new_shield_scale = 0.5, y_offset = 0)

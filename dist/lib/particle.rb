@@ -25,6 +25,6 @@ class Particle
     # Merge base color with our current opacity
     color = @base_color.dup
     color.alpha = @opacity
-    @image.draw_rot(@x, @y, 2, @angle, 0.5, 0.5, @scale, @scale, color)
+    @image.draw_rot(@x, @y, 100, @angle, 0.5, 0.5, @scale, @scale, color)
   end
 end

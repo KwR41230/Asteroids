@@ -4,12 +4,12 @@ class Starfield
     def initialize(speed, layer)
       @x = rand(0..GameWindow::WIDTH)
       @y = rand(0..GameWindow::HEIGHT)
-      @speed = speed
+      @base_speed = speed
       @layer = layer
     end
 
-    def update
-      @y += @speed
+    def update(multiplier)
+      @y += @base_speed * multiplier
       @y = 0 if @y > GameWindow::HEIGHT
     end
 
@@ -20,15 +20,18 @@ class Starfield
     end
   end
 
+  attr_accessor :speed_multiplier
+
   def initialize
     @stars = []
+    @speed_multiplier = 1.0
     40.times { @stars << Star.new(0.5, 0) }
     20.times { @stars << Star.new(1.0, 1) }
     10.times { @stars << Star.new(2.0, 2) }
   end
 
   def update
-    @stars.each(&:update)
+    @stars.each { |s| s.update(@speed_multiplier) }
   end
 
   def draw

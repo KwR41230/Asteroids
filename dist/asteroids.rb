@@ -349,9 +349,35 @@ class GameWindow < Gosu::Window
     if @player.armor <= 0 then if rand < 0.2 then p = Particle.new(@shield_image, @player.x, @player.y, Gosu::Color.rgba(30, 30, 30, 220)); p.instance_variable_set(:@vel_y, rand(1.5..3.0)); p.instance_variable_set(:@scale, 0.25); @particles << p end; if rand < 0.15 then p = Particle.new(@shield_image, @player.x + rand(-10..10), @player.y + rand(-10..10), Gosu::Color.rgba(255, 100, 0, 255)); p.instance_variable_set(:@scale, 0.05); @particles << p end end
   end
 
+  def spawn_exhaust
+    return unless @player.moving
+    
+    # More particles for a thicker trail
+    2.times do
+      if @level > 5
+        # Dual exhaust for upgraded ship (Cyan)
+        [-15, 15].each do |x_off|
+          p = Particle.new(@bullet_image, @player.x + x_off, @player.y + 5, Gosu::Color::CYAN)
+          p.instance_variable_set(:@vel_y, rand(3.0..6.0))
+          p.instance_variable_set(:@vel_x, rand(-1.0..1.0)) # Sideways spread
+          p.instance_variable_set(:@scale, rand(0.8..1.2)) # Random sizes
+          @particles << p
+        end
+      else
+        # Single central exhaust for starting ship (Yellow)
+        p = Particle.new(@bullet_image, @player.x, @player.y + 5, Gosu::Color::YELLOW)
+        p.instance_variable_set(:@vel_y, rand(3.0..6.0))
+        p.instance_variable_set(:@vel_x, rand(-1.0..1.0))
+        p.instance_variable_set(:@scale, rand(0.8..1.2))
+        @particles << p
+      end
+    end
+  end
+
   def update
     @toasts.each(&:update).reject!(&:dead?); while data = @achievement_manager.newly_unlocked.shift; @toasts << Toast.new(@font, data[:name], data[:desc]); @powerup_sound.play(0.5) end
     return if @state == :paused
+    @player.instance_variable_set(:@moving, false) # Reset moving flag
     @starfield.update; @particles.each(&:update).reject!(&:dead); @explosions.each(&:update).reject!(&:dead); @powerups.each(&:update).reject!(&:dead); @alien_bullets.each(&:update).reject! { |b| b.y > HEIGHT || b.y < 0 || b.x < 0 || b.x > WIDTH }
     @ufos.each { |u| if u.update(@player.x, @player.y, @alien_bullets); @alien_laser_sound.play(0.4) end }.reject!(&:dead)
     @shake_amount *= 0.9 if @shake_amount > 0; @player.weapon_type = :normal if @player.weapon_type != :normal && Gosu.milliseconds > @player.weapon_until
@@ -359,8 +385,17 @@ class GameWindow < Gosu::Window
     @combo_count = 0 if @combo_count > 0 && Gosu.milliseconds > @combo_timer
     spawn_damaged_effects if @state == :playing
     if @state == :level_up
+      @starfield.speed_multiplier = 15.0 # Hyper-speed stars!
+      @player.y -= 15 # Warp ship up!
+      
       if Gosu.milliseconds > @level_up_timer
         @level += 1; @asteroids_cleared = 0; @asteroids, @bullets, @ufos, @alien_bullets = [], [], [], []; @shield_cooldown_until = 0; @lives += 1 if @level % 3 == 0; @player.base_speed += 0.25; @player.repair; @achievement_manager.notify(:level_reach, @level); @state = :playing
+        
+        # Reset Warp Effects
+        @starfield.speed_multiplier = 1.0
+        @player.y = HEIGHT - 40 # Standard start position
+        @player.y -= 20 if @level > 5 # Apply the ship upgrade y-offset if needed
+        
         if @level % 5 == 0 then @bg_music.stop; @boss_music.play(true); @boss = Boss.new(@boss_image, @alien_bullet_image, @level); @shake_amount = 30; @flash_timer = Gosu.milliseconds + 100; @warp_sound.play; 50.times { @particles << Particle.new(@shield_image, 512, 150, Gosu::Color::CYAN).tap { |part| part.instance_variable_set(:@scale, 0.1) } }
         else (@boss_music.stop; @bg_music.play(true)) if !@bg_music.playing? end
       end
@@ -395,6 +430,7 @@ class GameWindow < Gosu::Window
       end
     end
     unless @boss then (if rand(100) < (1 + (@level * 1.5)) then img = rand < 0.5 ? @asteroid_small_image : @asteroid_medium_image; @asteroids << Asteroid.new(img, 2 + (@level * 0.5), (img == @asteroid_small_image ? 12 : 28)) end); ufo_limit = [1, (@level / 2).to_i].max; ufo_limit = 3 if ufo_limit > 3; (if rand(1000) < (2 + @level * 2) && @ufos.size < ufo_limit then @ufos << UFO.new(@ufo_image, @alien_bullet_image, rand(0..1)) end) end
+    spawn_exhaust if @state == :playing
   end
 end
 

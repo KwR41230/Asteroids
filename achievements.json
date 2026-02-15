@@ -1,10 +1,10 @@
 {
   "stats": {
-    "kills": 416,
+    "kills": 501,
     "bosses": 3,
     "total_score": 44200,
     "level": 8,
-    "combos": 2
+    "combos": 5
   },
   "unlocked": [
     "first_kill",
@@ -12,6 +12,7 @@
     "millionaire",
     "boss_slayer",
     "fifty_kills",
-    "boss_hunter"
+    "boss_hunter",
+    "combo_master"
   ]
 }
