@@ -42,11 +42,15 @@ class UFO
   end
 
   def shoot(player_x, player_y, bullets)
-    # Calculate angle to player
-    angle = Math.atan2(player_x - @x, @y - player_y) * 180 / Math::PI
-    # Add an Alien Bullet (we can reuse the Bullet class or add a flag)
-    # Since our Bullet class takes an angle, it works perfectly!
-    bullets << Bullet.new(@bullet_image, @x, @y, angle)
+    # Use Gosu.angle for reliable aiming
+    angle = Gosu.angle(@x, @y, player_x, player_y)
+    
+    # Calculate velocity vectors
+    vx = Gosu.offset_x(angle, 7) # Speed 7
+    vy = Gosu.offset_y(angle, 7)
+    
+    # Use AlienBullet class (requires: image, x, y, vx, vy)
+    bullets << AlienBullet.new(@bullet_image, @x, @y, vx, vy)
   end
 
   def draw

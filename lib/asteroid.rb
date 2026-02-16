@@ -11,7 +11,11 @@ class Asteroid
     @x = x || rand(@radius..(GameWindow::WIDTH - @radius))
     @y = y || -@radius
     
-    @vel_x = vel_x
+    # Add random chaos drift if it's a new asteroid (vel_x is 0)
+    # Drift increases slightly with speed
+    drift_max = 1.0 + (@speed * 0.2)
+    @vel_x = (vel_x == 0) ? rand(-drift_max..drift_max) : vel_x
+    
     @vel_y = @speed # Primary downward movement
   end
 

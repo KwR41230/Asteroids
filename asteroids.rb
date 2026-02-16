@@ -33,6 +33,7 @@ class GameWindow < Gosu::Window
 
     @ship_image = Gosu::Image.new("media/Spaceship.png")
     @ship_upgrade1_image = Gosu::Image.new("media/ship-upgrade1.png")
+    @ship_upgrade2_image = Gosu::Image.new("media/ship-upgrade2.png")
     @bullet_image = Gosu::Image.new("media/Bullet.png")
     @asteroid_small_image = Gosu::Image.new("media/AsteroidSmall.png")
     @asteroid_medium_image = Gosu::Image.new("media/AsteroidMedium.png")
@@ -117,7 +118,13 @@ class GameWindow < Gosu::Window
     @player.instance_variable_set(:@x, data["player"]["x"]); @player.instance_variable_set(:@y, data["player"]["y"])
     @player.shield_until = data["player"]["shield_until"] || 0; @player.weapon_type = (data["player"]["weapon_type"] || "normal").to_sym
     @player.weapon_until = data["player"]["weapon_until"] || 0; @player.base_speed = data["player"]["base_speed"] || 5; @player.instance_variable_set(:@armor, data["player"]["armor"] || 1)
-    @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20) if @level > 5
+    
+    if @level >= 10
+      @player.upgrade_image(@ship_upgrade2_image, 0.35, 0.75, 25)
+    elsif @level > 5
+      @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20)
+    end
+    
     @asteroids = data["asteroids"].map { |a| img = a["is_small"] ? @asteroid_small_image : @asteroid_medium_image; Asteroid.new(img, a["speed"], a["radius"], a["x"], a["y"], a["vel_x"] || 0) }
     @bullets, @particles, @explosions, @powerups, @ufos, @alien_bullets = [], [], [], [], [], []
     @shake_amount, @flash_timer, @god_mode = 0, 0, false
@@ -125,7 +132,7 @@ class GameWindow < Gosu::Window
     @state = :playing
   end
 
-  def level_goal; 10 + (@level * 20); end
+  def level_goal; 10 + (@level * 30); end
 
   def fire_bullet
     case @player.weapon_type
@@ -271,7 +278,7 @@ class GameWindow < Gosu::Window
     stats = @achievement_manager.stats
     
     # Left Side: Stats
-    @font_small.draw_text("Kills: #{stats[:kills]}", 50, 150, 2); @font_small.draw_text("Bosses: #{stats[:bosses]}", 50, 200, 2)
+    @font_small.draw_text("Kills: #{stats[:kills]}", 50, 150, 2); @font_small.draw_text("UFOs: #{stats[:ufos]}", 50, 200, 2)
     @font_small.draw_text("High Level: #{stats[:level]}", 50, 250, 2); @font_small.draw_text("Peak Score: #{stats[:total_score]}", 50, 300, 2)
     
     # Right Side: Achievement List
@@ -341,7 +348,14 @@ class GameWindow < Gosu::Window
   def handle_asteroid_destruction(asteroid)
     create_explosion(asteroid.x, asteroid.y, 8, Gosu::Color::WHITE); @achievement_manager.notify(:kill)
     if asteroid.radius > 20 then @asteroids << Asteroid.new(@asteroid_small_image, asteroid.speed * 1.2, 12, asteroid.x, asteroid.y, -2); @asteroids << Asteroid.new(@asteroid_small_image, asteroid.speed * 1.2, 12, asteroid.x, asteroid.y, 2) end
-    if rand < 0.05 then is_spread = rand < 0.5; @powerups << Powerup.new(asteroid.x, asteroid.y, is_spread ? :spread : :rapid, is_spread ? @spread_anim : @rapid_anim) end
+    
+    # Nerfed drop rate: Starts at 5%, drops to 1% by Level 10
+    drop_chance = [0.05, 0.05 / [1, (@level * 0.4)].max].min
+    if rand < drop_chance
+      is_spread = rand < 0.5
+      @powerups << Powerup.new(asteroid.x, asteroid.y, is_spread ? :spread : :rapid, is_spread ? @spread_anim : @rapid_anim)
+    end
+    
     @score += (10 * @level); @asteroids_cleared += 1; @achievement_manager.notify(:score_update, @score)
     if Gosu.milliseconds > @shield_cooldown_until && !@player.shielded? then @combo_count += 1; @combo_timer = Gosu.milliseconds + 1500; if @combo_count >= 5 then @player.shield_until = Gosu.milliseconds + 10000; @shield_cooldown_until = @player.shield_until + 30000; @combo_count = 0; @powerup_sound.play(0.6); @achievement_manager.notify(:combo_triggered) end end
     (@state = :level_up; @level_up_timer = Gosu.milliseconds + 2500; @level_up_sound.play(0.5)) if !@boss && @asteroids_cleared >= level_goal
@@ -358,7 +372,16 @@ class GameWindow < Gosu::Window
     
     # More particles for a thicker trail
     2.times do
-      if @level > 5
+      if @level >= 10
+        # Triple exhaust for heavy ship (Red/Orange)
+        [-25, 0, 25].each do |x_off|
+          p = Particle.new(@bullet_image, @player.x + x_off, @player.y + 10, Gosu::Color.rgba(255, 100, 0, 255))
+          p.instance_variable_set(:@vel_y, rand(4.0..8.0))
+          p.instance_variable_set(:@vel_x, rand(-1.5..1.5))
+          p.instance_variable_set(:@scale, rand(1.0..1.5))
+          @particles << p
+        end
+      elsif @level > 5
         # Dual exhaust for upgraded ship (Cyan)
         [-15, 15].each do |x_off|
           p = Particle.new(@bullet_image, @player.x + x_off, @player.y + 5, Gosu::Color::CYAN)
@@ -395,6 +418,18 @@ class GameWindow < Gosu::Window
       if Gosu.milliseconds > @level_up_timer
         @level += 1; @asteroids_cleared = 0; @asteroids, @bullets, @ufos, @alien_bullets = [], [], [], []; @shield_cooldown_until = 0; @lives += 1 if @level % 3 == 0; @player.base_speed += 0.25; @player.repair; @achievement_manager.notify(:level_reach, @level); @state = :playing
         
+        # Reliable Ship Upgrades (happens regardless of how level ended)
+        if @level == 6
+          @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20, 1)
+          @toasts << Toast.new(@font, "SHIP UPGRADED!", "Improved Speed & Armor")
+        elsif @level == 11
+          @player.upgrade_image(@ship_upgrade2_image, 0.35, 0.75, 25, 2)
+          @toasts << Toast.new(@font, "SHIP UPGRADED!", "Heavy Artillery Active")
+        end
+
+        @boss = nil # Cleanup boss just in case level was skipped
+        @alien_bullets = []
+
         # Reset Warp Effects
         @starfield.speed_multiplier = 1.0
         @player.y = HEIGHT - 40 # Standard start position
@@ -408,7 +443,8 @@ class GameWindow < Gosu::Window
     return unless @state == :playing
     @player.move_left if Gosu.button_down?(Gosu::KB_LEFT); @player.move_right if Gosu.button_down?(Gosu::KB_RIGHT)
     @bullets.each(&:update).reject! { |b| b.x < 0 || b.x > WIDTH || b.y < 0 || b.y > HEIGHT }; @asteroids.each(&:update).reject! { |a| a.y > HEIGHT + a.radius }
-    if @boss then shake_boost = @boss.update(@player.x, @player.y, @alien_bullets); @shake_amount = [@shake_amount, shake_boost].max; if @boss.dead? then create_explosion(@boss.x, @boss.y, 50, Gosu::Color::YELLOW); @achievement_manager.notify(:boss_defeat); @score += 5000 * @level; if @level == 5 then @player.upgrade_image(@ship_upgrade1_image, 0.3, 0.65, 20); @toasts << Toast.new(@font, "SHIP UPGRADED!", "Improved Speed & Armor") end; @boss = nil; @state = :level_up; @level_up_timer = Gosu.milliseconds + 4000; @level_up_sound.play(0.8) end end
+    if @boss then shake_boost = @boss.update(@player.x, @player.y, @alien_bullets); @shake_amount = [@shake_amount, shake_boost].max; if @boss.dead? then create_explosion(@boss.x, @boss.y, 50, Gosu::Color::YELLOW); @achievement_manager.notify(:boss_defeat); @score += 5000 * @level
+      @boss = nil; @state = :level_up; @level_up_timer = Gosu.milliseconds + 4000; @level_up_sound.play(0.8) end end
     @powerups.reject! do |p|
       if Gosu.distance(@player.x, @player.y, p.x, p.y) < (@player.radius + p.radius)
         if p.type == :repair 
@@ -424,7 +460,10 @@ class GameWindow < Gosu::Window
       hit_ast = @asteroids.find { |a| Gosu.distance(bullet.x, bullet.y, a.x, a.y) < (bullet.radius + a.radius) }; hit_ufo = @ufos.find { |u| Gosu.distance(bullet.x, bullet.y, u.x, u.y) < (bullet.radius + u.radius) }; hit_boss = @boss && Gosu.distance(bullet.x, bullet.y, @boss.x, @boss.y) < (@boss.radius + bullet.radius)
       if hit_boss then if @boss.take_damage(1) == :drop_powerup then is_spread = rand < 0.5; @powerups << Powerup.new(@boss.x, @boss.y, is_spread ? :spread : :rapid, is_spread ? @spread_anim : @rapid_anim) end; create_explosion(bullet.x, bullet.y, 1, Gosu::Color::CYAN); true
       elsif hit_ast then handle_asteroid_destruction(hit_ast); @asteroids.delete(hit_ast); @fire_sound.play(0.3); true
-      elsif hit_ufo then create_explosion(hit_ufo.x, hit_ufo.y, 15, Gosu::Color::RED); (if rand < 0.1 then @powerups << Powerup.new(hit_ufo.x, hit_ufo.y, :repair, @repair_anim) end); @ufos.delete(hit_ufo); @score += (50 * @level); @explosion_sound.play; true else; false; end
+      elsif hit_ufo
+        create_explosion(hit_ufo.x, hit_ufo.y, 15, Gosu::Color::RED); (if rand < 0.1 then @powerups << Powerup.new(hit_ufo.x, hit_ufo.y, :repair, @repair_anim) end)
+        @achievement_manager.notify(:ufo_defeat)
+        @ufos.delete(hit_ufo); @score += (50 * @level); @explosion_sound.play; true else; false; end
     end
     unless @player.recovering?
       hit_ast = @asteroids.find { |a| Gosu.distance(@player.x, @player.y, a.x, a.y) < (@player.radius + a.radius) }; hit_ufo = @ufos.find { |u| Gosu.distance(@player.x, @player.y, u.x, u.y) < (@player.radius + u.radius) }; hit_bul = @alien_bullets.find { |b| Gosu.distance(@player.x, @player.y, b.x, b.y) < (@player.radius + b.radius) }; hit_boss = @boss && !@boss.warping && Gosu.distance(@player.x, @player.y, @boss.x, @boss.y) < (@player.radius + @boss.radius)

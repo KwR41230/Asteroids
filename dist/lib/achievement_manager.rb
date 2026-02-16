@@ -10,16 +10,19 @@ class AchievementManager
     boss_slayer: { name: "Regicide", desc: "Defeat a Boss", goal: 1 },
     boss_hunter: { name: "Titan Killer", desc: "Defeat 3 Bosses", goal: 3 },
     level_ten: { name: "Veteran Pilot", desc: "Reach Level 10", goal: 10 },
-    level_twenty: { name: "Legend of Space", desc: "Reach Level 20", goal: 20 },
+    level_twenty: { name: "Space Ace", desc: "Reach Level 20", goal: 20 },
+    level_thirty: { name: "Invincible", desc: "Reach Level 30", goal: 30 },
     millionaire: { name: "High Roller", desc: "Reach a score of 10,000", goal: 10000 },
     billionaire: { name: "Galactic Elite", desc: "Reach a score of 50,000", goal: 50000 },
+    legend: { name: "The Legend", desc: "Reach a score of 4,000,000", goal: 4000000 },
+    ufo_hunter: { name: "UFO Hunter", desc: "Destroy 50 UFOs total", goal: 50 },
     combo_master: { name: "Untouchable", desc: "Unlock 5 Shields in one game", goal: 5 }
   }
 
   attr_reader :stats, :unlocked, :newly_unlocked
 
   def initialize
-    @stats = { kills: 0, bosses: 0, total_score: 0, level: 1, combos: 0 }
+    @stats = { kills: 0, bosses: 0, total_score: 0, level: 1, combos: 0, ufos: 0 }
     @unlocked = []
     @newly_unlocked = []
     load_data
@@ -29,6 +32,7 @@ class AchievementManager
     case event
     when :kill then @stats[:kills] += value
     when :boss_defeat then @stats[:bosses] += value
+    when :ufo_defeat then @stats[:ufos] += value
     when :score_update then @stats[:total_score] = [@stats[:total_score], value].max
     when :level_reach then @stats[:level] = [@stats[:level], value].max
     when :combo_triggered then @stats[:combos] += value
@@ -49,8 +53,11 @@ class AchievementManager
             when :boss_hunter then @stats[:bosses] >= 3
             when :level_ten then @stats[:level] >= 10
             when :level_twenty then @stats[:level] >= 20
+            when :level_thirty then @stats[:level] >= 30
             when :millionaire then @stats[:total_score] >= 10000
             when :billionaire then @stats[:total_score] >= 50000
+            when :legend then @stats[:total_score] >= 4000000
+            when :ufo_hunter then @stats[:ufos] >= 50
             when :combo_master then @stats[:combos] >= 5
             end
             

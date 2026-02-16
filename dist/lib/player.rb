@@ -51,15 +51,15 @@ class Player
     @moving = true
   end
 
-  def upgrade_image(new_image, new_scale = 1.0, new_shield_scale = 0.5, y_offset = 0)
+  def upgrade_image(new_image, new_scale = 1.0, new_shield_scale = 0.5, y_offset = 0, tier = 1)
     @image = new_image
     @scale = new_scale
     @shield_scale = new_shield_scale
     @y -= y_offset
     @base_speed += 1.5
     
-    # Upgrade Armor
-    @max_armor = 2
+    # Tier 1 (Lvl 5) -> 2 Armor, Tier 2 (Lvl 10) -> 3 Armor
+    @max_armor = 1 + tier
     @armor = @max_armor
   end
 
